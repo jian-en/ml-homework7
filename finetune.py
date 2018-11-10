@@ -3,7 +3,7 @@ import copy
 import numpy as np
 import torch
 import os
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from skimage import io
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
@@ -23,7 +23,7 @@ NAME = {0: "St. Stephan's Cathedral, Austria",
         8: "Edinburgh, Scotland",
         9: "Stockholm, Sweden"}
 
-PATH = ""
+MODEL_FILE = ""
 ROOT_DIR = ""
 CSV_FILE = ""
 
@@ -99,16 +99,15 @@ class ToTensor(object):
                 'landmark_id': landmark_id,
                 'landmark_name': landmark_name}
 
-
 landmarks = LandmarksDataset(csv_file=CSV_FILE,
                              root_dir=ROOT_DIR,
                              transform=transforms.Compose([RandomCrop(224),
                                                            ToTensor()]))
 dataloader = DataLoader(landmarks, batch_size=20,
-                        shuffle=True, num_workers=4)
+                        shuffle=True, num_workers=8)
 
 
-def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
+def train_model(model, criterion, optimizer, scheduler, num_epochs):
     since = time.time()
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
@@ -162,43 +161,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     return model
 
 
-def imshow(inp, title=None):
-    """Imshow for Tensor."""
-    inp = inp.numpy().transpose((1, 2, 0))
-    plt.imshow(inp)
-    if title is not None:
-        plt.title(title)
-    plt.pause(0.001)  # pause a bit so that plots are updated
-
-
-def visualize_model(model, num_images=6):
-    was_training = model.training
-    model.eval()
-    images_so_far = 0
-
-    with torch.no_grad():
-        for i, data in enumerate(dataloader):
-            inputs = data['image']
-            inputs = inputs.to(device)
-
-            outputs = model(inputs)
-            _, preds = torch.max(outputs, 1)
-
-            for j in range(inputs.size()[0]):
-                images_so_far += 1
-                ax = plt.subplot(num_images//2, 2, images_so_far)
-                ax.axis('off')
-                ax.set_title('predicted: {}'.format(NAME[preds[j]]))
-                imshow(inputs.cpu().data[j])
-
-                if images_so_far == num_images:
-                    model.train(mode=was_training)
-                    return
-        model.train(mode=was_training)
-
-
 if __name__ == '__main__':
-    model_ft = models.resnet34(pretrained=True)
+    model_ft = models.resnet18(pretrained=True)
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, 10)
 
@@ -215,4 +179,4 @@ if __name__ == '__main__':
     model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
                            num_epochs=3)
 
-    torch.save(model_ft.state_dict(), PATH)
+    torch.save(model_ft.state_dict(), MODEL_FILE)
