@@ -1,18 +1,16 @@
-
 import time
 import copy
 import numpy as np
 import torch
 import os
 import matplotlib.pyplot as plt
-from skimage import io# , transform
+from skimage import io
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, models
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
-
 
 NAME = {0: "St. Stephan's Cathedral, Austria",
         1: "Teide, Spain",
@@ -92,9 +90,6 @@ class ToTensor(object):
     def __call__(self, sample):
         image, landmark_id, landmark_name = sample['image'], sample['landmark_id'], sample['landmark_name']
 
-        # swap color axis because
-        # numpy image: H x W x C
-        # torch image: C X H X W
         image = image.transpose((2, 0, 1))
         return {'image': torch.from_numpy(image),
                 'landmark_id': landmark_id,
@@ -105,8 +100,7 @@ landmarks = LandmarksDataset(csv_file="train.csv",
                              root_dir="images/",
                              transform=transforms.Compose([RandomCrop(224),
                                                            ToTensor()]))
-
-dataloader = DataLoader(landmarks, batch_size=4,
+dataloader = DataLoader(landmarks, batch_size=20,
                         shuffle=True, num_workers=4)
 
 
@@ -125,7 +119,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
         running_corrects = 0
 
         for data in dataloader:
-            inputs, labels = data['image'].type(torch.FloatTensor), data['landmark_id'].type(torch.FloatTensor)
+            inputs, labels = data['image'].type(torch.FloatTensor), data['landmark_id'].type(torch.LongTensor)
             inputs = inputs.to(device)
             labels = labels.to(device)
 
@@ -143,15 +137,15 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
             running_loss += loss.item() * inputs.size(0)
             running_corrects += torch.sum(preds == labels.data)
 
-            epoch_loss = running_loss / len(landmarks)
-            epoch_acc = running_corrects.double() / len(landmarks)
+        epoch_loss = running_loss / len(landmarks)
+        epoch_acc = running_corrects.double() / len(landmarks)
 
-            print('Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
+        print('Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
 
-            # deep copy the model
-            if epoch_acc > best_acc:
-                best_acc = epoch_acc
-                best_model_wts = copy.deepcopy(model.state_dict())
+        # deep copy the model
+        if epoch_acc > best_acc:
+            best_acc = epoch_acc
+            best_model_wts = copy.deepcopy(model.state_dict())
         print()
 
     time_elapsed = time.time() - since
@@ -214,4 +208,4 @@ optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
 model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                       num_epochs=25)
+                       num_epochs=3)
