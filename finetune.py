@@ -23,6 +23,10 @@ NAME = {0: "St. Stephan's Cathedral, Austria",
         8: "Edinburgh, Scotland",
         9: "Stockholm, Sweden"}
 
+PATH = ""
+ROOT_DIR = ""
+CSV_FILE = ""
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -96,8 +100,8 @@ class ToTensor(object):
                 'landmark_name': landmark_name}
 
 
-landmarks = LandmarksDataset(csv_file="train.csv",
-                             root_dir="images/",
+landmarks = LandmarksDataset(csv_file=CSV_FILE,
+                             root_dir=ROOT_DIR,
                              transform=transforms.Compose([RandomCrop(224),
                                                            ToTensor()]))
 dataloader = DataLoader(landmarks, batch_size=20,
@@ -193,19 +197,22 @@ def visualize_model(model, num_images=6):
         model.train(mode=was_training)
 
 
-model_ft = models.resnet18(pretrained=True)
-num_ftrs = model_ft.fc.in_features
-model_ft.fc = nn.Linear(num_ftrs, 10)
+if __name__ == '__main__':
+    model_ft = models.resnet34(pretrained=True)
+    num_ftrs = model_ft.fc.in_features
+    model_ft.fc = nn.Linear(num_ftrs, 10)
 
-model_ft = model_ft.to(device)
+    model_ft = model_ft.to(device)
 
-criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
 
-# Observe that all parameters are being optimized
-optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
+    # Observe that all parameters are being optimized
+    optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
 
-# Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
+    # Decay LR by a factor of 0.1 every 7 epochs
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                       num_epochs=3)
+    model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
+                           num_epochs=3)
+
+    torch.save(model_ft.state_dict(), PATH)
